@@ -3,9 +3,7 @@ package com.example.cardreader;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.app.PendingIntent;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.tech.IsoDep;
@@ -23,9 +21,6 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
 
     private NfcAdapter nfcAdapter;
     private TextView textView;
-    private PendingIntent pendingIntent;
-    private IntentFilter[] mIntentFilters;
-    private String[][] mNFCTechLists;
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
@@ -36,16 +31,6 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         textView = (TextView) findViewById(R.id.textView);
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
-        Log.d("apdu","data: "+selectApdu(SelectAID));
-        byte[] bytes = Base64.getDecoder().decode("00A4040007A0000002471001");
-        byte[] bytes1 = Utils.hexToByteArray("F2600609640539");
-        Log.d("apdu","base decode: "+bytes);
-        Log.d("apdu","base decode 1: "+bytes1);
-        Log.d("apdu","decode: "+Base64.getEncoder().encodeToString(bytes));
-        Log.d("apdu","decode 1: "+Base64.getEncoder().encodeToString(bytes1));
-        Log.d("apdu","data 1: "+Base64.getEncoder().encodeToString(selectApdu(SelectAID)));
-        Log.d("apdu","data 2: "+Utils.byteArrayToHex(selectApdu(SelectAID)));
-        Log.d("apdu","data 3: "+Utils.byteArrayToHex(bytes1));
         if (nfcAdapter != null) {
             textView.setText("Read an NFC tag");
         } else {
@@ -57,12 +42,7 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     public void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         String action = intent.getAction();
-        Log.d("Action",":"+action);
         Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
-
-//        Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
-//        Log.d("Tag","new intent tag: "+tag);
-//        onTagDiscovered(tag);
     }
 
     @Override
@@ -70,7 +50,6 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         super.onResume();
 
         if (nfcAdapter != null) {
-            // nfcAdapter.enableForegroundDispatch(this, pendingIntent, mIntentFilters, mNFCTechLists);
             // Work around some buggy hardware that checks for cards too fast
             Bundle options = new Bundle();
             options.putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 1000);
@@ -79,35 +58,26 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 NfcAdapter.FLAG_READER_NFC_F |
                 NfcAdapter.FLAG_READER_NFC_V |
                 NfcAdapter.FLAG_READER_NFC_BARCODE |
-                NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK |
-                NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS,
+                NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK ,
                     options);
         }
-
-
     }
 
     @Override
     public void onPause() {
         super.onPause();
         if (nfcAdapter != null)
-          //  nfcAdapter.disableForegroundDispatch(this);
         nfcAdapter.disableReaderMode(this);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void onTagDiscovered(Tag tag) {
-        Log.d("response ","nfc tag: "+tag);
+
         IsoDep nfcA = IsoDep.get(tag);
         try {
             nfcA.connect();
-            byte[] response = nfcA.transceive(Utils.hexToByteArray("00A4040007F2600609640539"));
-            Log.d("response","byte nfca: "+response);
-            Log.d("response","byte 1 nfca: "+Base64.getDecoder().decode("00A4040007A0000002471001"));
-            Log.d("response","hex nfca: "+ Base64.getEncoder().encodeToString(response));
-            Log.d("response","hex nfca: "+ new String(response, StandardCharsets.UTF_8));
-            Log.d("response","result nfca: "+ Utils.byteArrayToHex(response));
+            byte[] response = nfcA.transceive(selectApdu(SelectAID));
             textView.setText("NFC Response: "+Utils.byteArrayToHex(response));
         } catch (IOException e) {
             e.printStackTrace();
@@ -118,27 +88,6 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
                 e.printStackTrace();
             }
         }
-
-//        IsoDep isoDep = IsoDep.get(tag);
-//        Log.d("response","isoDep: "+isoDep);
-//        if (isoDep != null) {
-//            try {
-//                isoDep.connect();
-//                byte[] result = isoDep.transceive(Utils.hexToByteArray("00A4040007F260060964053900"));
-//                Log.d("response","byte: "+result);
-//                Log.d("response","byte 1: "+Base64.getDecoder().decode("00A4040007F260060964053900"));
-//                Log.d("response","hex: "+ Base64.getEncoder().encodeToString(result));
-//                Log.d("response","result: "+ Utils.byteArrayToHex(result));
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//            finally {
-//                try {
-//                    isoDep.close();
-//                } catch (Exception ignored) {}
-//            }
-//        }
-
     }
 
     public static byte[] SelectAID = new byte[]{
