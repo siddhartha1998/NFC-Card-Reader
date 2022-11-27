@@ -7,17 +7,20 @@ import android.content.Intent;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.tech.IsoDep;
+import android.nfc.tech.Ndef;
 import android.nfc.tech.NfcA;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
-public class MainActivity extends AppCompatActivity implements NfcAdapter.ReaderCallback {
+@RequiresApi(api = Build.VERSION_CODES.N)
+public class MainActivity extends AppCompatActivity implements NfcAdapter.ReaderCallback, NfcAdapter.OnTagRemovedListener {
 
     private NfcAdapter nfcAdapter;
     private TextView textView;
@@ -36,6 +39,11 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         } else {
             textView.setText("This phone is not NFC enabled.");
         }
+
+//        nfcAdapter.enableReaderMode(this, tag -> {
+//            Log.d("Read","NFC tag found"+tag);
+//            Toast.makeText(this, "Tag found", Toast.LENGTH_LONG).show();
+//        }, NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK, null);
     }
 
     @Override
@@ -43,6 +51,8 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         super.onNewIntent(intent);
         String action = intent.getAction();
         Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+
+            Log.d("tag", "TAG IS NOT NULL"+tag);
     }
 
     @Override
@@ -53,12 +63,13 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
             // Work around some buggy hardware that checks for cards too fast
             Bundle options = new Bundle();
             options.putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 1000);
-            nfcAdapter.enableReaderMode(this, this, NfcAdapter.FLAG_READER_NFC_A |
-                NfcAdapter.FLAG_READER_NFC_B |
-                NfcAdapter.FLAG_READER_NFC_F |
-                NfcAdapter.FLAG_READER_NFC_V |
-                NfcAdapter.FLAG_READER_NFC_BARCODE |
-                NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK ,
+            nfcAdapter.enableReaderMode(this, this,
+                    NfcAdapter.FLAG_READER_NFC_A |
+                            NfcAdapter.FLAG_READER_NFC_B |
+                             NfcAdapter.FLAG_READER_NFC_F |
+                              NfcAdapter.FLAG_READER_NFC_V |
+                                 NfcAdapter.FLAG_READER_NFC_BARCODE |
+                                    NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK ,
                     options);
         }
     }
@@ -73,17 +84,22 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
     @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void onTagDiscovered(Tag tag) {
-
-        IsoDep nfcA = IsoDep.get(tag);
+        Log.d("Read","tag :"+tag.getId());
+       // Ndef mndef = Ndef.get(tag);
+        IsoDep isoDep = IsoDep.get(tag);
         try {
-            nfcA.connect();
-            byte[] response = nfcA.transceive(selectApdu(SelectAID));
-            textView.setText("NFC Response: "+Utils.byteArrayToHex(response));
+            isoDep.connect();
+            //byte[] response = nfcA.transceive(selectApdu(SelectAID));
+            byte[] response = isoDep.transceive(Utils.hexToByteArray("00A4040007F260060964053900"));
+            String res = Utils.convertHexToStringValue(Utils.byteArrayToHex(response));
+            Log.d("Read","response :"+res);
+
+            textView.setText("Fonepay Response: "+res);
         } catch (IOException e) {
             e.printStackTrace();
         }finally {
             try {
-                nfcA.close();
+                isoDep.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -104,5 +120,10 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
         System.arraycopy(aid, 0, commandApdu, 5, aid.length);
        // commandApdu[commandApdu.length - 1] = (byte)0x00;  // Le
         return commandApdu;
+    }
+
+    @Override
+    public void onTagRemoved() {
+
     }
 }

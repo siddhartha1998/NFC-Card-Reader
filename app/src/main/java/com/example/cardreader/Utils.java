@@ -19,4 +19,16 @@ public class Utils {
             sb.append(String.format("%02x", b));
         return sb.toString();
     }
+
+    public static String convertHexToStringValue(String hex) {
+        StringBuilder stringbuilder = new StringBuilder();
+        char[] hexData = hex.toCharArray();
+        for (int count = 0; count < hexData.length - 1; count += 2) {
+            int firstDigit = Character.digit(hexData[count], 16);
+            int lastDigit = Character.digit(hexData[count + 1], 16);
+            int decimal = firstDigit * 16 + lastDigit;
+            stringbuilder.append((char)decimal);
+        }
+        return stringbuilder.toString();
+    }
 }
